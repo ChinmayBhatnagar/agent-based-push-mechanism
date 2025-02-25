@@ -26,6 +26,14 @@ $stmt->bind_param("iss", $user_id, $activity_type, $activity_data);
 $stmt->execute();
 $stmt->close();
 
+// ✅ If activity is "searching", save it in search_history table
+if ($activity_type === "searching") {
+    $stmt = $conn->prepare("INSERT INTO search_history (user_id, search_query) VALUES (?, ?)");
+    $stmt->bind_param("is", $user_id, $activity_data);
+    $stmt->execute();
+    $stmt->close();
+}
+
 $response = [];
 $search_term = "%" . $activity_data . "%";
 
