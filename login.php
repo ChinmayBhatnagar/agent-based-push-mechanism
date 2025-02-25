@@ -3,7 +3,7 @@ session_start();
 include 'db_connect.php';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $email = $_POST["email"];
+    $email = trim($_POST["email"]);
     $password = $_POST["password"];
 
     // Fetch user from database
@@ -12,8 +12,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $stmt->bind_param("s", $email);
     $stmt->execute();
     $result = $stmt->get_result();
-    $stmt->close();
-
+    
     if ($result->num_rows == 1) {
         $user = $result->fetch_assoc();
         
@@ -24,19 +23,35 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $_SESSION["email"] = $user["email"];
             $_SESSION["role"] = $user["role"];
 
-            if ($user["role"] === "admin") {
-                header("Location: admin_dashboard.php");
-                exit;
-            } else {
-                header("Location: target_dashboard.php");
-                exit;
+            // Log successful login
+            $log_sql = "INSERT INTO logs (user_id, action, details) VALUES (?, 'Login Success', ?)";
+            if ($log_stmt = $conn->prepare($log_sql)) {
+                $details = "User logged in successfully. IP: " . $_SERVER['REMOTE_ADDR'];
+                $log_stmt->bind_param("is", $user["user_id"], $details);
+                $log_stmt->execute();
+                $log_stmt->close();
             }
-        } else {
-            $error = "Invalid password!";
+
+            // Redirect user based on role
+            header("Location: " . ($user["role"] === "admin" ? "admin_dashboard.php" : "target_dashboard.php"));
+            exit;
         }
-    } else {
-        $error = "User not found!";
     }
+
+    // Failed login attempt
+    $error = "Invalid email or password!";
+    
+    // Log failed login attempt
+    $log_sql = "INSERT INTO logs (user_id, action, details) VALUES (NULL, 'Login Failed', ?)";
+    if ($log_stmt = $conn->prepare($log_sql)) {
+        $sanitized_email = htmlspecialchars($email, ENT_QUOTES, 'UTF-8');
+        $details = "Failed login attempt for email: $sanitized_email. IP: " . $_SERVER['REMOTE_ADDR'];
+        $log_stmt->bind_param("s", $details);
+        $log_stmt->execute();
+        $log_stmt->close();
+    }
+
+    $stmt->close();
 }
 
 $conn->close();
