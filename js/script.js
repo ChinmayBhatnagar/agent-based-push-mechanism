@@ -49,12 +49,31 @@ function displaySuggestions(items) {
     });
 }
 
+// Function to save search queries in the database with debouncing
+let searchTimeout; // Timeout variable for debounce
+function saveSearchQuery(searchQuery) {
+    if (!searchQuery.trim()) return; // Ignore empty search queries
+
+    clearTimeout(searchTimeout); // Clear previous timeout if user is still typing
+
+    searchTimeout = setTimeout(() => {
+        fetch('save_search.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `search_query=${encodeURIComponent(searchQuery)}`
+        })
+        .catch(error => console.error("Error saving search query:", error));
+    }, 500); // Wait 500ms before saving
+}
+
 // Event listener for typing activity
 document.getElementById("user-activity").addEventListener("input", function () {
     sendActivity("typing", this.value);
 });
 
-// Event listener for search activity
+// Event listener for search activity (saves search history with debounce)
 document.getElementById("search-box").addEventListener("input", function () {
-    sendActivity("searching", this.value);
+    let searchQuery = this.value;
+    sendActivity("searching", searchQuery);
+    saveSearchQuery(searchQuery);
 });
