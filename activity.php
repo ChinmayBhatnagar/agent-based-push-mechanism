@@ -1,4 +1,10 @@
 <?php
+
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+header('Content-Type: application/json');
+session_start(); // Start session to access logged-in user ID
+
 // Database connection
 $servername = "localhost";
 $username = "root";  // default XAMPP MySQL username
@@ -6,15 +12,19 @@ $password = "";  // default XAMPP MySQL password
 $dbname = "information_push_db";
 
 $conn = new mysqli($servername, $username, $password, $dbname);
-
 if ($conn->connect_error) {
     die(json_encode(["error" => "Database connection failed: " . $conn->connect_error]));
 }
 
+// Ensure user is logged in
+if (!isset($_SESSION['user_id'])) {
+    die(json_encode(["error" => "User not logged in."]));
+}
+$user_id = $_SESSION['user_id']; // Get user ID from session
+
 // Capture activity data from GET request
 $activity_type = $_GET['activity_type'] ?? '';
 $activity_data = $_GET['activity_data'] ?? '';
-$user_id = 1; // Hardcoded user_id for now
 
 if (empty($activity_type) || empty($activity_data)) {
     die(json_encode(["error" => "Missing activity_type or activity_data"]));
@@ -23,14 +33,18 @@ if (empty($activity_type) || empty($activity_data)) {
 // Insert activity into user_activity table
 $stmt = $conn->prepare("INSERT INTO user_activity (user_id, activity_type, activity_data) VALUES (?, ?, ?)");
 $stmt->bind_param("iss", $user_id, $activity_type, $activity_data);
-$stmt->execute();
+if (!$stmt->execute()) {
+    die(json_encode(["error" => "Failed to log activity: " . $stmt->error]));
+}
 $stmt->close();
 
 // ✅ If activity is "searching", save it in search_history table
 if ($activity_type === "searching") {
     $stmt = $conn->prepare("INSERT INTO search_history (user_id, search_query) VALUES (?, ?)");
     $stmt->bind_param("is", $user_id, $activity_data);
-    $stmt->execute();
+    if (!$stmt->execute()) {
+        die(json_encode(["error" => "Failed to save search: " . $stmt->error]));
+    }
     $stmt->close();
 }
 
@@ -83,4 +97,5 @@ if (empty($response)) {
 }
 
 $conn->close();
+
 ?>

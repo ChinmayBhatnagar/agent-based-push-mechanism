@@ -2,7 +2,7 @@
 session_start();
 include 'db_connect.php';
 
-// Redirect if not logged in
+// Redirect if not logged in or incorrect role
 if (!isset($_SESSION["user_id"]) || $_SESSION["role"] !== "user") {
     header("Location: login.php");
     exit;
@@ -82,11 +82,19 @@ $user_id = $_SESSION["user_id"];
     <script>
         function fetchRecommendations() {
             fetch('fetch_recommendations.php')
-                .then(response => response.text())
-                .then(data => {
-                    document.getElementById("recommendations").innerHTML = data;
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.text();
                 })
-                .catch(error => console.error("Error fetching recommendations:", error));
+                .then(data => {
+                    document.getElementById("recommendations").innerHTML = data || "<p class='no-recommendations'>No recommendations available.</p>";
+                })
+                .catch(error => {
+                    console.error("Error fetching recommendations:", error);
+                    document.getElementById("recommendations").innerHTML = "<p class='no-recommendations'>Error fetching recommendations.</p>";
+                });
         }
 
         document.addEventListener("DOMContentLoaded", fetchRecommendations);

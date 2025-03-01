@@ -97,6 +97,8 @@ $result = $conn->query($sql);
         <a href="view_logs.php">View System Logs</a>
         <a href="manage_rules.php">Manage Push Rules</a>
         <a href="manage_resources.php">Manage Resources</a>
+        <a href="view_feedback.php" class="btn">📩 View User Feedback</a>
+
     </div>
 
     <div class="container">

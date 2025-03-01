@@ -2,7 +2,6 @@
 session_start();
 include 'db_connect.php';
 
-// Redirect if not logged in
 if (!isset($_SESSION["user_id"]) || $_SESSION["role"] !== "user") {
     header("Location: login.php");
     exit;
@@ -20,14 +19,14 @@ $result = $stmt->get_result();
 
 $preferences = [];
 while ($row = $result->fetch_assoc()) {
-    $preferences[$row['preference_category']] = $row['value'];
+    $preferences[$row['preference_category']] = explode(',', $row['value']); // Store as array
 }
 $stmt->close();
 
 // Handle form submission
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $category = $_POST["category"];
-    $value = $_POST["value"];
+    $values = isset($_POST["values"]) ? implode(',', $_POST["values"]) : '';
 
     // Check if preference already exists
     $sql = "SELECT user_id FROM user_preferences WHERE user_id = ? AND preference_category = ?";
@@ -40,17 +39,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Update existing preference
         $sql = "UPDATE user_preferences SET value = ? WHERE user_id = ? AND preference_category = ?";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("sis", $value, $user_id, $category);
+        $stmt->bind_param("sis", $values, $user_id, $category);
     } else {
         // Insert new preference
         $sql = "INSERT INTO user_preferences (user_id, preference_category, value) VALUES (?, ?, ?)";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("iss", $user_id, $category, $value);
+        $stmt->bind_param("iss", $user_id, $category, $values);
     }
-    
+
     if ($stmt->execute()) {
         $message = "Preferences updated successfully!";
-        $preferences[$category] = $value; // Update array dynamically
+        $preferences[$category] = explode(',', $values); // Update dynamically
     } else {
         $message = "Error updating preferences.";
     }
@@ -67,7 +66,7 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Update Preferences</title>
-    <link rel="stylesheet" href="css/style.css"> <!-- External CSS -->
+    <link rel="stylesheet" href="css/style.css">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -89,7 +88,7 @@ $conn->close();
         h2 {
             color: #333;
         }
-        select, textarea {
+        select {
             width: 100%;
             padding: 10px;
             margin-top: 10px;
@@ -111,29 +110,7 @@ $conn->close();
         .btn:hover {
             background-color: #0056b3;
         }
-        .back-btn {
-            display: block;
-            margin-top: 15px;
-            color: #007bff;
-            text-decoration: none;
-            font-size: 14px;
-        }
-        .back-btn:hover {
-            text-decoration: underline;
-        }
-        .message {
-            color: green;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
     </style>
-    <script>
-        function updatePreferenceValue() {
-            var category = document.getElementById("category").value;
-            var preferences = <?php echo json_encode($preferences); ?>;
-            document.getElementById("value").value = preferences[category] || "";
-        }
-    </script>
 </head>
 <body>
 
@@ -146,24 +123,28 @@ $conn->close();
 
         <form method="post">
             <label for="category">Preference Category:</label>
-            <select name="category" id="category" required onchange="updatePreferenceValue()">
+            <select name="category" id="category" required>
                 <option value="Favorite Topics">Favorite Topics</option>
                 <option value="Preferred Content Type">Preferred Content Type</option>
             </select>
 
-            <label for="value">Enter Your Preference:</label>
-            <textarea name="value" id="value" required></textarea>
+            <label for="values">Select Your Preferences:</label>
+            <select name="values[]" id="values" multiple required>
+                <option value="Technology">Technology</option>
+                <option value="Science">Science</option>
+                <option value="Business">Business</option>
+                <option value="Entertainment">Entertainment</option>
+                <option value="Sports">Sports</option>
+                <option value="Articles">Articles</option>
+                <option value="Videos">Videos</option>
+                <option value="Podcasts">Podcasts</option>
+            </select>
 
             <button type="submit" class="btn">Save Preferences</button>
         </form>
 
-        <a href="user_dashboard.php" class="back-btn">Back to Dashboard</a>
+        <a href="user_dashboard.php" class="btn">Back to Dashboard</a>
     </div>
-
-    <script>
-        // Initialize textarea with the first category's preference
-        updatePreferenceValue();
-    </script>
 
 </body>
 </html>

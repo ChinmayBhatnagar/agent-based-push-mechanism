@@ -18,32 +18,41 @@ $result = $stmt->get_result();
 
 $preferences = [];
 while ($row = $result->fetch_assoc()) {
-    $preferences[$row['preference_category']] = $row['value'];
+    $preferences[$row['preference_category']] = explode(',', $row['value']);
 }
 $stmt->close();
 
-// Generate recommendations
 if (!empty($preferences)) {
     echo "<h3>Based on Your Preferences:</h3>";
 
-    $sql = "SELECT title, link FROM resources WHERE category = ?";
-    $stmt = $conn->prepare($sql);
+    $sql = "SELECT title, link FROM resources WHERE ";
+    $conditions = [];
+    $params = [];
+    $types = "";
 
-    foreach ($preferences as $category => $value) {
-        echo "<div class='category-title'>🔹 $category:</div>";
-        $stmt->bind_param("s", $value); // Use value, not category
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        if ($result->num_rows > 0) {
-            echo "<ul class='resource-list'>";
-            while ($row = $result->fetch_assoc()) {
-                echo "<li>📖 <a href='" . htmlspecialchars($row['link']) . "' target='_blank'>" . htmlspecialchars($row['title']) . "</a></li>";
-            }
-            echo "</ul>";
-        } else {
-            echo "<p class='no-recommendations'>No recommendations available for <strong>$value</strong>.</p>";
+    foreach ($preferences as $category => $values) {
+        foreach ($values as $value) {
+            $conditions[] = "(LOWER(category) = LOWER(?) OR LOWER(title) LIKE LOWER(CONCAT('%', ?, '%')))";
+            $params[] = $value;
+            $params[] = $value;
+            $types .= "ss";
         }
+    }
+
+    $sql .= implode(" OR ", $conditions);
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param($types, ...$params);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows > 0) {
+        echo "<ul class='resource-list'>";
+        while ($row = $result->fetch_assoc()) {
+            echo "<li>📖 <a href='" . htmlspecialchars($row['link'], ENT_QUOTES, 'UTF-8') . "' target='_blank'>" . htmlspecialchars($row['title'], ENT_QUOTES, 'UTF-8') . "</a></li>";
+        }
+        echo "</ul>";
+    } else {
+        echo "<p class='no-recommendations'>No recommendations available.</p>";
     }
 
     $stmt->close();

@@ -1,5 +1,6 @@
 <?php
 session_start();
+include 'db_connect.php';
 
 // Redirect if not logged in
 if (!isset($_SESSION["user_id"]) || $_SESSION["role"] !== "user") {
@@ -63,10 +64,33 @@ if (!isset($_SESSION["user_id"]) || $_SESSION["role"] !== "user") {
         .logout:hover {
             background: darkred;
         }
+        .feedback-form {
+            margin-top: 20px;
+            text-align: left;
+        }
+        .feedback-form label {
+            font-weight: bold;
+            display: block;
+            margin-top: 10px;
+        }
+        .feedback-form select,
+        .feedback-form textarea {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        .submit-btn {
+            margin-top: 15px;
+            background: green;
+        }
+        .submit-btn:hover {
+            background: darkgreen;
+        }
     </style>
 </head>
 <body>
-
     <div class="dashboard-container">
         <h2>Welcome, <?php echo htmlspecialchars($_SESSION["username"]); ?>!</h2>
 
@@ -76,8 +100,36 @@ if (!isset($_SESSION["user_id"]) || $_SESSION["role"] !== "user") {
             <li><a href="update_preferences.php" class="btn">⚙️ Update Preferences</a></li>
         </ul>
 
+        <!-- Feedback Form -->
+        <div class="feedback-form">
+            <h3>📝 Submit Feedback</h3>
+            <form action="submit_feedback.php" method="post">
+                <label for="feedback_type">Feedback Type:</label>
+                <select name="feedback_type" id="feedback_type" required>
+                    <option value="Appreciation">Appreciation</option>
+                    <option value="Problem">Problem</option>
+                    <option value="Request">Request for Resources</option>
+                </select>
+
+                <label for="message">Your Feedback:</label>
+                <textarea name="message" id="message" rows="4" required></textarea>
+
+                <button type="submit" class="btn submit-btn">📩 Submit Feedback</button>
+            </form>
+
+            <?php
+            if (isset($_SESSION["success"])) {
+                echo "<p style='color: green;'>" . $_SESSION["success"] . "</p>";
+                unset($_SESSION["success"]);
+            }
+            if (isset($_SESSION["error"])) {
+                echo "<p style='color: red;'>" . $_SESSION["error"] . "</p>";
+                unset($_SESSION["error"]);
+            }
+            ?>
+        </div>
+
         <a href="logout.php" class="btn logout">🚪 Logout</a>
     </div>
-
 </body>
 </html>

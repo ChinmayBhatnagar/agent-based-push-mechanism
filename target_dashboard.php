@@ -109,5 +109,6 @@ if (!isset($_SESSION["user_id"]) || $_SESSION["role"] !== "user") {
     </div>
 
     <script src="js/script.js"></script>
+    
 </body>
 </html>
