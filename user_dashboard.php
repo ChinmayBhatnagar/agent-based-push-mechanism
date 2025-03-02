@@ -7,6 +7,25 @@ if (!isset($_SESSION["user_id"]) || $_SESSION["role"] !== "user") {
     header("Location: login.php");
     exit;
 }
+
+$user_id = $_SESSION["user_id"];
+
+// Generate CSRF token for feedback form security
+if (!isset($_SESSION["csrf_token"])) {
+    $_SESSION["csrf_token"] = bin2hex(random_bytes(32));
+}
+
+// Fetch resolved resource requests for notification
+$query = "SELECT message FROM feedback WHERE user_id = ? AND feedback_type = 'Request' AND status = 'resolved'";
+$stmt = $conn->prepare($query);
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$result = $stmt->get_result();
+$fulfilled_requests = [];
+while ($row = $result->fetch_assoc()) {
+    $fulfilled_requests[] = $row['message'];
+}
+$stmt->close();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -14,7 +33,7 @@ if (!isset($_SESSION["user_id"]) || $_SESSION["role"] !== "user") {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Dashboard</title>
-    <link rel="stylesheet" href="css/style.css"> <!-- External CSS -->
+    <link rel="stylesheet" href="css/style.css">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -32,6 +51,22 @@ if (!isset($_SESSION["user_id"]) || $_SESSION["role"] !== "user") {
             box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
             width: 400px;
             text-align: center;
+        }
+        .notification-box {
+            background: #d4edda;
+            color: #155724;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            display: block;
+        }
+        .notification-box button {
+            background: none;
+            border: none;
+            color: #155724;
+            font-size: 16px;
+            float: right;
+            cursor: pointer;
         }
         h2 {
             color: #333;
@@ -88,11 +123,38 @@ if (!isset($_SESSION["user_id"]) || $_SESSION["role"] !== "user") {
         .submit-btn:hover {
             background: darkgreen;
         }
+        .message {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
     </style>
 </head>
 <body>
     <div class="dashboard-container">
-        <h2>Welcome, <?php echo htmlspecialchars($_SESSION["username"]); ?>!</h2>
+        <h2>Welcome, <?php echo isset($_SESSION["username"]) ? htmlspecialchars($_SESSION["username"]) : "User"; ?>!</h2>
+
+        <!-- Notifications for resolved resource requests -->
+        <?php if (!empty($fulfilled_requests)) : ?>
+            <div class="notification-box" id="notification-box">
+                <strong>🎉 Your Requested Resources Are Available!</strong>
+                <button onclick="hideNotification()">✖</button>
+                <ul>
+                    <?php foreach ($fulfilled_requests as $request) : ?>
+                        <li><?php echo htmlspecialchars($request); ?></li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        <?php endif; ?>
 
         <h3>Your Activity</h3>
         <ul class="options">
@@ -104,6 +166,8 @@ if (!isset($_SESSION["user_id"]) || $_SESSION["role"] !== "user") {
         <div class="feedback-form">
             <h3>📝 Submit Feedback</h3>
             <form action="submit_feedback.php" method="post">
+                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+
                 <label for="feedback_type">Feedback Type:</label>
                 <select name="feedback_type" id="feedback_type" required>
                     <option value="Appreciation">Appreciation</option>
@@ -117,19 +181,24 @@ if (!isset($_SESSION["user_id"]) || $_SESSION["role"] !== "user") {
                 <button type="submit" class="btn submit-btn">📩 Submit Feedback</button>
             </form>
 
-            <?php
-            if (isset($_SESSION["success"])) {
-                echo "<p style='color: green;'>" . $_SESSION["success"] . "</p>";
-                unset($_SESSION["success"]);
-            }
-            if (isset($_SESSION["error"])) {
-                echo "<p style='color: red;'>" . $_SESSION["error"] . "</p>";
-                unset($_SESSION["error"]);
-            }
-            ?>
+            <?php if (isset($_SESSION["success"])) : ?>
+                <p class="message success"><?php echo $_SESSION["success"]; ?></p>
+                <?php unset($_SESSION["success"]); ?>
+            <?php endif; ?>
+
+            <?php if (isset($_SESSION["error"])) : ?>
+                <p class="message error"><?php echo $_SESSION["error"]; ?></p>
+                <?php unset($_SESSION["error"]); ?>
+            <?php endif; ?>
         </div>
 
         <a href="logout.php" class="btn logout">🚪 Logout</a>
     </div>
+
+    <script>
+        function hideNotification() {
+            document.getElementById("notification-box").style.display = "none";
+        }
+    </script>
 </body>
 </html>
