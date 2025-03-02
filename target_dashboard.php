@@ -27,7 +27,7 @@ if (!isset($_SESSION["user_id"]) || $_SESSION["role"] !== "user") {
         }
         .container {
             background: white;
-            padding: 25px;
+            padding: 100px;
             border-radius: 10px;
             box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
             width: 500px;

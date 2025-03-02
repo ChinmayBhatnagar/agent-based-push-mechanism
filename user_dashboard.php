@@ -46,10 +46,11 @@ $stmt->close();
         }
         .dashboard-container {
             background: white;
-            padding: 25px;
+            padding: 100px;
             border-radius: 10px;
+            padding-bottom: 60px;
             box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-            width: 400px;
+            width: 500px;
             text-align: center;
         }
         .notification-box {
